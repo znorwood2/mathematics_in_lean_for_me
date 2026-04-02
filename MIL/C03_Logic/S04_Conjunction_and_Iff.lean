@@ -63,8 +63,13 @@ example {x y : ℝ} (h : x ≤ y ∧ x ≠ y) : ¬y ≤ x := by
 example {x y : ℝ} (h : x ≤ y ∧ x ≠ y) : ¬y ≤ x :=
   fun h' ↦ h.right (le_antisymm h.left h')
 
-example {m n : ℕ} (h : m ∣ n ∧ m ≠ n) : m ∣ n ∧ ¬n ∣ m :=
-  sorry
+example {m n : ℕ} (h : m ∣ n ∧ m ≠ n) : m ∣ n ∧ ¬n ∣ m := by
+  rcases h with ⟨h₀, h₁⟩
+  constructor
+  · assumption
+  by_contra hnm
+  have : m = n := dvd_antisymm h₀ hnm
+  exact h₁ this
 
 example : ∃ x : ℝ, 2 < x ∧ x < 4 :=
   ⟨5 / 2, by norm_num, by norm_num⟩
@@ -101,15 +106,42 @@ example {x y : ℝ} (h : x ≤ y) : ¬y ≤ x ↔ x ≠ y := by
 example {x y : ℝ} (h : x ≤ y) : ¬y ≤ x ↔ x ≠ y :=
   ⟨fun h₀ h₁ ↦ h₀ (by rw [h₁]), fun h₀ h₁ ↦ h₀ (le_antisymm h h₁)⟩
 
-example {x y : ℝ} : x ≤ y ∧ ¬y ≤ x ↔ x ≤ y ∧ x ≠ y :=
-  sorry
+example {x y : ℝ} : x ≤ y ∧ ¬y ≤ x ↔ x ≤ y ∧ x ≠ y := by
+  constructor
+  · intro ⟨xley, nylex⟩
+    constructor
+    · exact xley
+    intro xeqy
+    linarith
+  · intro ⟨xley, xney⟩
+    constructor
+    · exact xley
+    intro ylex
+    exact xney (le_antisymm xley ylex)
+
+#check pow_two_nonneg
 
 theorem aux {x y : ℝ} (h : x ^ 2 + y ^ 2 = 0) : x = 0 :=
-  have h' : x ^ 2 = 0 := by sorry
+  have h' : x ^ 2 = 0 := by
+    have x2ge0 : x ^ 2 ≥ 0 := by
+      apply pow_two_nonneg
+    have y2ge0 : y ^ 2 ≥ 0 := by
+      apply pow_two_nonneg
+    have x2le0 : x ^ 2 ≤ 0 := by
+      linarith
+    exact le_antisymm x2le0 x2ge0
   pow_eq_zero h'
 
-example (x y : ℝ) : x ^ 2 + y ^ 2 = 0 ↔ x = 0 ∧ y = 0 :=
-  sorry
+example (x y : ℝ) : x ^ 2 + y ^ 2 = 0 ↔ x = 0 ∧ y = 0 := by
+  constructor
+  · intro h
+    constructor
+    · apply aux h
+    · have : y ^ 2 + x ^ 2 = 0 := by linarith
+      apply aux this
+  intro ⟨xzero, yzero⟩
+  rw [xzero, yzero]
+  norm_num
 
 section
 
@@ -130,7 +162,11 @@ theorem not_monotone_iff {f : ℝ → ℝ} : ¬Monotone f ↔ ∃ x y, x ≤ y �
   rfl
 
 example : ¬Monotone fun x : ℝ ↦ -x := by
-  sorry
+  rw [Monotone]
+  push_neg
+  use 1
+  use 2
+  norm_num
 
 section
 variable {α : Type*} [PartialOrder α]
@@ -138,7 +174,18 @@ variable (a b : α)
 
 example : a < b ↔ a ≤ b ∧ a ≠ b := by
   rw [lt_iff_le_not_ge]
-  sorry
+  constructor
+  · intro ⟨aleb, aneb⟩
+    constructor
+    · exact aleb
+    intro aeqb
+    rw [aeqb] at aneb
+    exact aneb (le_refl b)
+  · intro ⟨aleb, nblea⟩
+    constructor
+    · assumption
+    intro blea
+    exact nblea (le_antisymm aleb blea)
 
 end
 
@@ -148,10 +195,17 @@ variable (a b c : α)
 
 example : ¬a < a := by
   rw [lt_iff_le_not_ge]
-  sorry
+  push_neg
+  tauto
 
 example : a < b → b < c → a < c := by
   simp only [lt_iff_le_not_ge]
-  sorry
+  intro ⟨aleb, nblea⟩
+  intro ⟨alec, ncleb⟩
+  constructor
+  · exact le_trans aleb alec
+  intro clea
+  have cleb : c ≤ b := le_trans clea aleb
+  exact ncleb cleb
 
 end
